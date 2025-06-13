@@ -87,6 +87,9 @@ mlm_l = loss(mlm_Y_hat.reshape((-1, vocab_size)), mlm_Y.reshape(-1))
 mlm_l.shape
 
 
+########################################
+# Next Sentence Prediction (NSP) Task
+########################################
 class NextSentencePred(nn.Module):
     """BERT的下一句预测任务"""
     def __init__(self, num_inputs, **kwargs):
