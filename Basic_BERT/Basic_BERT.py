@@ -1,7 +1,6 @@
 import torch
 from torch import nn
-from d2l import torch as d2l
-
+import Encoder
 
 def get_tokens_and_segments(tokens_a, tokens_b=None):
     """transform tokens_a and tokens_b into BERT's input format"""
@@ -25,8 +24,7 @@ class BERTEncoder(nn.Module):
         self.segment_embedding = nn.Embedding(2, num_hiddens)
         self.blks = nn.Sequential()
         for i in range(num_layers):
-            # Use the d2l built-in EncoderBlock
-            self.blks.add_module(f"{i}", d2l.EncoderBlock(
+            self.blks.add_module(f"{i}", Encoder.EncoderBlock(
                 key_size, query_size, value_size, num_hiddens, norm_shape,
                 ffn_num_input, ffn_num_hiddens, num_heads, dropout, True))
         self.pos_embedding = nn.Parameter(torch.randn(1, max_len,
@@ -49,7 +47,7 @@ encoder = BERTEncoder(vocab_size, num_hiddens, norm_shape, ffn_num_input,
 tokens = torch.randint(0, vocab_size, (2, 8))
 segments = torch.tensor([[0, 0, 0, 0, 1, 1, 1, 1], [0, 0, 0, 1, 1, 1, 1, 1]])
 encoded_X = encoder(tokens, segments, None)
-encoded_X.shape
+# print(encoded_X.shape)
 
 
 class MaskLM(nn.Module):
@@ -78,13 +76,13 @@ class MaskLM(nn.Module):
 mlm = MaskLM(vocab_size, num_hiddens)
 mlm_positions = torch.tensor([[1, 5, 2], [6, 1, 5]])
 mlm_Y_hat = mlm(encoded_X, mlm_positions)
-mlm_Y_hat.shape
+# print(mlm_Y_hat.shape)
 
 
 mlm_Y = torch.tensor([[7, 8, 9], [10, 20, 30]])
 loss = nn.CrossEntropyLoss(reduction='none')
 mlm_l = loss(mlm_Y_hat.reshape((-1, vocab_size)), mlm_Y.reshape(-1))
-mlm_l.shape
+# print(mlm_l.shape)
 
 
 ########################################
@@ -105,12 +103,12 @@ encoded_X = torch.flatten(encoded_X, start_dim=1)
 # NSP的输入形状:(batchsize，num_hiddens)
 nsp = NextSentencePred(encoded_X.shape[-1])
 nsp_Y_hat = nsp(encoded_X)
-nsp_Y_hat.shape
+# print(nsp_Y_hat.shape)
 
 
 nsp_y = torch.tensor([0, 1])
 nsp_l = loss(nsp_Y_hat, nsp_y)
-nsp_l.shape
+# print(nsp_l.shape)
 
 
 class BERTModel(nn.Module):
