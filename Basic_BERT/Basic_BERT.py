@@ -27,31 +27,39 @@ class BERTEncoder(nn.Module):
             self.blks.add_module(f"{i}", Encoder.EncoderBlock(
                 key_size, query_size, value_size, num_hiddens, norm_shape,
                 ffn_num_input, ffn_num_hiddens, num_heads, dropout, True))
+        # In BERT, positional embeddings are learnable, thus we create a
+        # parameter of positional embeddings that are long enough
         self.pos_embedding = nn.Parameter(torch.randn(1, max_len,
                                                       num_hiddens))
 
     def forward(self, tokens, segments, valid_lens):
+        # Shape of `X` remains unchanged in the following code snippet:
+        # (batch size, max sequence length, `num_hiddens`)
         X = self.token_embedding(tokens) + self.segment_embedding(segments)
         X = X + self.pos_embedding.data[:, :X.shape[1], :]
         for blk in self.blks:
             X = blk(X, valid_lens)
         return X
     
-
+# Define parameters
 vocab_size, num_hiddens, ffn_num_hiddens, num_heads = 10000, 768, 1024, 4
 norm_shape, ffn_num_input, num_layers, dropout = [768], 768, 2, 0.2
 encoder = BERTEncoder(vocab_size, num_hiddens, norm_shape, ffn_num_input,
                       ffn_num_hiddens, num_heads, num_layers, dropout)
 
-
+# Example usage
 tokens = torch.randint(0, vocab_size, (2, 8))
 segments = torch.tensor([[0, 0, 0, 0, 1, 1, 1, 1], [0, 0, 0, 1, 1, 1, 1, 1]])
 encoded_X = encoder(tokens, segments, None)
-# print(encoded_X.shape)
+# print(encoded_X.shape)    # [2, 8, 768]
 
 
+########################################
+# Pre-training Tasks
+########################################
+
+# Task 1: Masked Language Modeling (MLM)
 class MaskLM(nn.Module):
-    """BERT的掩蔽语言模型任务"""
     def __init__(self, vocab_size, num_hiddens, num_inputs=768, **kwargs):
         super(MaskLM, self).__init__(**kwargs)
         self.mlp = nn.Sequential(nn.Linear(num_inputs, num_hiddens),
@@ -85,11 +93,8 @@ mlm_l = loss(mlm_Y_hat.reshape((-1, vocab_size)), mlm_Y.reshape(-1))
 # print(mlm_l.shape)
 
 
-########################################
-# Next Sentence Prediction (NSP) Task
-########################################
+# Task 2: Next Sentence Prediction (NSP)
 class NextSentencePred(nn.Module):
-    """BERT的下一句预测任务"""
     def __init__(self, num_inputs, **kwargs):
         super(NextSentencePred, self).__init__(**kwargs)
         self.output = nn.Linear(num_inputs, 2)
