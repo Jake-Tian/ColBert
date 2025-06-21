@@ -3,32 +3,6 @@ import torch
 from torch import nn
 
 
-def sequence_mask(X, valid_len, value=0):
-    """在序列中屏蔽不相关的项"""
-    maxlen = X.size(1)
-    mask = torch.arange((maxlen), dtype=torch.float32,
-                        device=X.device)[None, :] < valid_len[:, None]
-    X[~mask] = value
-    return X
-
-
-def masked_softmax(X, valid_lens):
-    """通过在最后一个轴上掩蔽元素来执行softmax操作"""
-    # X:3D张量，valid_lens:1D或2D张量
-    if valid_lens is None:
-        return nn.functional.softmax(X, dim=-1)
-    else:
-        shape = X.shape
-        if valid_lens.dim() == 1:
-            valid_lens = torch.repeat_interleave(valid_lens, shape[1])
-        else:
-            valid_lens = valid_lens.reshape(-1)
-        # 最后一轴上被掩蔽的元素使用一个非常大的负值替换，从而其softmax输出为0
-        X = sequence_mask(X.reshape(-1, shape[-1]), valid_lens,
-                              value=-1e6)
-        return nn.functional.softmax(X.reshape(shape), dim=-1)
-
-
 class DotProductAttention(nn.Module):
     """缩放点积注意力"""
     def __init__(self, dropout, **kwargs):
@@ -86,29 +60,6 @@ class MultiHeadAttention(nn.Module):
         return self.W_o(output_concat)
     
 
-def transpose_qkv(X, num_heads):
-    """为了多注意力头的并行计算而变换形状"""
-    # 输入X的形状:(batch_size，查询或者“键－值”对的个数，num_hiddens)
-    # 输出X的形状:(batch_size，查询或者“键－值”对的个数，num_heads，
-    # num_hiddens/num_heads)
-    X = X.reshape(X.shape[0], X.shape[1], num_heads, -1)
-
-    # 输出X的形状:(batch_size，num_heads，查询或者“键－值”对的个数,
-    # num_hiddens/num_heads)
-    X = X.permute(0, 2, 1, 3)
-
-    # 最终输出的形状:(batch_size*num_heads,查询或者“键－值”对的个数,
-    # num_hiddens/num_heads)
-    return X.reshape(-1, X.shape[2], X.shape[3])
-
-
-def transpose_output(X, num_heads):
-    """逆转transpose_qkv函数的操作"""
-    X = X.reshape(-1, num_heads, X.shape[1], X.shape[2])
-    X = X.permute(0, 2, 1, 3)
-    return X.reshape(X.shape[0], X.shape[1], -1)
-
-
 class PositionWiseFFN(nn.Module):
     """基于位置的前馈网络"""
     def __init__(self, ffn_num_input, ffn_num_hiddens, ffn_num_outputs,
@@ -150,3 +101,51 @@ class EncoderBlock(nn.Module):
     def forward(self, X, valid_lens):
         Y = self.addnorm1(X, self.attention(X, X, X, valid_lens))
         return self.addnorm2(Y, self.ffn(Y))
+
+  
+def sequence_mask(X, valid_len, value=0):
+    """在序列中屏蔽不相关的项"""
+    maxlen = X.size(1)
+    mask = torch.arange((maxlen), dtype=torch.float32,
+                        device=X.device)[None, :] < valid_len[:, None]
+    X[~mask] = value
+    return X
+
+def masked_softmax(X, valid_lens):
+    """通过在最后一个轴上掩蔽元素来执行softmax操作"""
+    # X:3D张量，valid_lens:1D或2D张量
+    if valid_lens is None:
+        return nn.functional.softmax(X, dim=-1)
+    else:
+        shape = X.shape
+        if valid_lens.dim() == 1:
+            valid_lens = torch.repeat_interleave(valid_lens, shape[1])
+        else:
+            valid_lens = valid_lens.reshape(-1)
+        # 最后一轴上被掩蔽的元素使用一个非常大的负值替换，从而其softmax输出为0
+        X = sequence_mask(X.reshape(-1, shape[-1]), valid_lens,
+                              value=-1e6)
+        return nn.functional.softmax(X.reshape(shape), dim=-1)
+
+def transpose_qkv(X, num_heads):
+    """为了多注意力头的并行计算而变换形状"""
+    # 输入X的形状:(batch_size，查询或者“键－值”对的个数，num_hiddens)
+    # 输出X的形状:(batch_size，查询或者“键－值”对的个数，num_heads，
+    # num_hiddens/num_heads)
+    X = X.reshape(X.shape[0], X.shape[1], num_heads, -1)
+
+    # 输出X的形状:(batch_size，num_heads，查询或者“键－值”对的个数,
+    # num_hiddens/num_heads)
+    X = X.permute(0, 2, 1, 3)
+
+    # 最终输出的形状:(batch_size*num_heads,查询或者“键－值”对的个数,
+    # num_hiddens/num_heads)
+    return X.reshape(-1, X.shape[2], X.shape[3])
+
+def transpose_output(X, num_heads):
+    """逆转transpose_qkv函数的操作"""
+    X = X.reshape(-1, num_heads, X.shape[1], X.shape[2])
+    X = X.permute(0, 2, 1, 3)
+    return X.reshape(X.shape[0], X.shape[1], -1)
+
+
