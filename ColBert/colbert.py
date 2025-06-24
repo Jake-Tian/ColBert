@@ -35,7 +35,7 @@ class ColBERT(BertPreTrainedModel):
         return self.score(self.query(*Q), self.doc(*D))
 
     """ GPU: Model computations (BERT, linear layers, and normalization)
-        CPU: Masking, list conversion, and other operations
+        CPU: BERT's WordPiece tokenization, masking, and list conversion
     """
     def query(self, input_ids, attention_mask):
         """ Query Encoder: Process the query input and return normalized embeddings.
