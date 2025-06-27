@@ -84,10 +84,12 @@ def get_parts(directory):
     return parts, parts_paths, samples_paths
 
 def index_faiss(args):
+    """ Build the FAISS index with the provided parts and samples."""
     print_message("#> Starting..")
 
     parts, parts_paths, samples_paths = get_parts(args.index_path)
 
+    # If the user provided a sample fraction, use the full part files as the source for training samples. 
     if args.sample is not None:
         assert args.sample, args.sample
         print_message(f"#> Training with {round(args.sample * 100.0, 1)}% of *all* embeddings (provided --sample).")
@@ -95,9 +97,11 @@ def index_faiss(args):
 
     num_parts_per_slice = math.ceil(len(parts) / args.slices)
 
+    # Process each slice
     for slice_idx, part_offset in enumerate(range(0, len(parts), num_parts_per_slice)):
         part_endpos = min(part_offset + num_parts_per_slice, len(parts))
 
+        # Prepare paths and output name
         slice_parts_paths = parts_paths[part_offset:part_endpos]
         slice_samples_paths = samples_paths[part_offset:part_endpos]
 
@@ -112,11 +116,13 @@ def index_faiss(args):
 
         assert not os.path.exists(output_path), output_path
 
+        # Prepare and train the FAISS index.
         index = prepare_faiss_index(slice_samples_paths, args.partitions, args.sample)
 
         loaded_parts = queue.Queue(maxsize=1)
 
         def _loader_thread(thread_parts_paths):
+            """ Thread to load parts and put them into the queue."""
             for filenames in grouper(thread_parts_paths, SPAN, fillvalue=None):
                 sub_collection = [load_index_part(filename) for filename in filenames if filename is not None]
                 sub_collection = torch.cat(sub_collection)
@@ -128,6 +134,7 @@ def index_faiss(args):
 
         print_message("#> Indexing the vectors...")
 
+        # For each group of part files, gets the loaded embeddings from the queue and adds them to the index.
         for filenames in grouper(slice_parts_paths, SPAN, fillvalue=None):
             print_message("#> Loading", filenames, "(from queue)...")
             sub_collection = loaded_parts.get()
