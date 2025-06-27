@@ -5,6 +5,7 @@ import faiss
 import torch
 import numpy as np
 
+from utils import print_message, grouper
 
 class FaissIndex():
     def __init__(self, dim, partitions):
@@ -44,12 +45,12 @@ class FaissIndex():
         """ Assigning data to its nearest cluster based on the quantizer,
             and adding it to the index"""
         
-        # print_message(f"Add data with shape {data.shape} (offset = {self.offset})..")
+        print_message(f"Add data with shape {data.shape} (offset = {self.offset})..")
         self.index.add(data)
         self.offset += data.shape[0]
 
     def save(self, output_path):
-        # print_message(f"Writing index to {output_path} ...")
-
+        
+        print_message(f"Writing index to {output_path} ...")
         self.index.nprobe = 10  # just a default
         faiss.write_index(self.index, output_path)
