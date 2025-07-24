@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from transformers import BertModel, BertTokenizer
+from utils import get_ocr_docs
 
 class VideoEncoder(nn.Module):
     def __init__(self, 
@@ -17,8 +18,10 @@ class VideoEncoder(nn.Module):
         """
         super().__init__()
         
-        # Modality-specific normalization
+        # Visual Encoder
         self.visual_norm = nn.LayerNorm(visual_dim)
+
+        # Audio Encoder
         self.audio_norm = nn.LayerNorm(audio_dim)
         
         # Text encoder (frozen BERT)
