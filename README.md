@@ -1,3 +1,3 @@
-## Video-RAG
+## Video-ColBERT
 
-![Alt Text](./images/Video-RAG.png)
+![Alt Text](./images/video-colbert.png)
