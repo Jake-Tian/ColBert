@@ -1,10 +1,12 @@
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 from transformers import BertTokenizerFast
 from utils import _split_into_batches, _sort_by_length
 
 
-class DocTokenizer():
+class DocTokenizer(nn.Module):
     def __init__(self, doc_maxlen):
         self.tok = BertTokenizerFast.from_pretrained('bert-base-uncased')
         self.doc_maxlen = doc_maxlen
@@ -16,16 +18,6 @@ class DocTokenizer():
         assert self.D_marker_token_id == 2
 
     def tokenize(self, batch_text, add_special_tokens=False):
-        """
-        Tokenizes a batch of document texts.
-
-        Args: 
-            batch_text: list of document texts
-            add_special_tokens: whether to add special tokens [CLS], [D], and [SEP]
-
-        Returns:
-            tokens: list of tokenized documents, each document is a list of tokens. 
-        """
         assert type(batch_text) in [list, tuple], (type(batch_text))
 
         tokens = [self.tok.tokenize(x, add_special_tokens=False) for x in batch_text]
@@ -33,24 +25,12 @@ class DocTokenizer():
         if not add_special_tokens:
             return tokens
 
-        # Document token: [CLS] [D] lst [SEP]
-        # Unlike queries, we do not append [mask] tokens to documents.
         prefix, suffix = [self.cls_token, self.D_marker_token], [self.sep_token]
         tokens = [prefix + lst + suffix for lst in tokens]
 
         return tokens
 
     def encode(self, batch_text, add_special_tokens=False):
-        """
-        Encodes a batch of document texts into token IDs (Ed)
-        
-        Args:
-            batch_text: list of document texts
-            add_special_tokens: whether to add special tokens [CLS], [D], and [SEP
-                
-        Returns:
-            ids: list of encoded documents, each document is a list of token IDs.
-        """
         assert type(batch_text) in [list, tuple], (type(batch_text))
 
         ids = self.tok(batch_text, add_special_tokens=False)['input_ids']
@@ -64,8 +44,6 @@ class DocTokenizer():
         return ids
 
     def tensorize(self, batch_text, bsize=None):
-        """Tensorizes a batch of document texts into input IDs and attention masks.
-            Tensor shape: (batch_size, doc_maxlen)"""
         assert type(batch_text) in [list, tuple], (type(batch_text))
 
         # add placehold for the [D] marker
