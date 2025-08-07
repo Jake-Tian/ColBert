@@ -115,7 +115,6 @@ nsp_l = loss(nsp_Y_hat, nsp_y)
 
 
 class BERTModel(nn.Module):
-    """BERT模型"""
     def __init__(self, vocab_size, num_hiddens, norm_shape, ffn_num_input,
                  ffn_num_hiddens, num_heads, num_layers, dropout,
                  max_len=1000, key_size=768, query_size=768, value_size=768,
