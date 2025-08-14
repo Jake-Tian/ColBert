@@ -1,6 +1,6 @@
 
 """
-Test GPU's parallel training using ResNet-18 on CIFAR-10 dataset.
+Test GPU's parallel training using a pre-trained ResNet-18 on CIFAR-10 dataset.
 """
 
 import os 
@@ -13,11 +13,11 @@ from torch import nn
 
 print("The number of cuda device: ", torch.cuda.device_count())
 
-devices = [torch.device(f'cuda:{i}') for i in range(torch.cuda.device_count())]
-# devices = [torch.device("mps")]
+# devices = [torch.device(f'cuda:{i}') for i in range(torch.cuda.device_count())]
+devices = [torch.device("mps")]
 
 def load_cifar10(is_train, augs, batch_size):
-    dataset = torchvision.datasets.CIFAR10(root="/data", train=is_train,
+    dataset = torchvision.datasets.CIFAR10(root="GPU_Test/", train=is_train,
                                            download=True, transform=augs)
     dataloader = data.DataLoader(dataset, batch_size=batch_size,
                     shuffle=is_train, num_workers=0)
